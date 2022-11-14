@@ -6,7 +6,7 @@
 
 #include "modules/room_gps.h"
 
-#define ENABLE_SENSOR (false)
+#define ENABLE_SENSOR (true)
 #define PAYLOAD_SIZE (7)
 #define DATA_TIMEOUT (3000)
 #define DHTPIN 12 // define data pin on Adafruit, we used 2
@@ -14,7 +14,7 @@
 
 #if ENABLE_SENSOR
 RoomGps gps(DATA_TIMEOUT);
-RoomDht11 dht(DHT_PIN, DATA_TIMEOUT);
+DHT dht(DHTPIN, DHTTYPE); //define properties of sensor
 #endif
 
 static const u1_t PROGMEM APPEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -34,8 +34,6 @@ void os_getDevKey(u1_t *buf) { memcpy_P(buf, APPKEY, 16); }
 
 static osjob_t sendjob;
 static osjob_t doWorkJob;
-
-DHT dht(DHTPIN, DHTTYPE); //define properties of sensor
 
 uint32_t doWorkIntervalSeconds = 3;
 
@@ -110,18 +108,17 @@ void do_send(osjob_t* j){
 #if ENABLE_SENSOR
         // Prepare upstream data transmission at the next possible time.
         // dht.compute();
-        // gps.compute();
+        gps.compute();
 
-        float temperature = dht.getTemperature();
-        float humidity = dht.getHumidity();
-        double longitude = 0.0; //gps.getLongitude();
-        double latitude = 0.0; //gps.getLatitude();
-        Serial.println(temperature);
-#else
         float temperature = dht.readTemperature();
         float humidity = dht.readHumidity();
-        double longitude = 0.0; //gps.getLongitude();
-        double latitude = 0.0; //gps.getLatitude();
+        double longitude = gps.getLongitude();
+        double latitude = gps.getLatitude();
+#else
+        float temperature = 26.0;
+        float humidity = 50.0;
+        double longitude = 4.45;
+        double latitude = 50.84;
 #endif
         Serial.println(dht.readHumidity());  //save the value of humidity to hum variable
         Serial.println(dht.readTemperature()); // save the value of temperature to temp variable  
@@ -366,9 +363,7 @@ void setup() {
     LMIC_setDrTxpow(DR_SF7,14);
     // os_clearCallback(&doWorkJob);
     // os_setCallback(&doWorkJob, doWorkCallback);
-    delay(1000);
-
-    dht.begin(); //initiate the communication with sensor 
+    delay(1000); 
 
 #if ENABLE_SENSOR
     gps.begin();
@@ -382,34 +377,4 @@ void setup() {
 
 void loop() {
    os_runloop_once();
-
-/*#if ENABLE_SENSOR
-    dht.compute();
-    gps.compute();
-
-    uint8_t payload[PAYLOAD_SIZE] = {0};
-
-    float temperature = dht.getTemperature();
-    float humidity = dht.getHumidity();
-    double longitude = 0.0; // gps.getLongitude();
-    double latitude = 0.0;  // gps.getLatitude();
-
-    payload[0] = (uint8_t)temperature;
-    payload[1] = (uint8_t)((temperature - (int)temperature) * 10);
-    payload[2] = (uint8_t)humidity;
-    payload[3] = (uint8_t)latitude;
-    payload[4] = (uint8_t)((latitude - (int)latitude) * 100);
-    payload[5] = (uint8_t)longitude;
-    payload[6] = (uint8_t)((longitude - (int)longitude) * 100);
-    Serial.println("here");
-
-    for (int i = 0; i < PAYLOAD_SIZE; i++)
-    {
-        Serial.print(payload[i], HEX);
-        Serial.print(", ");
-    }
-    Serial.println();
-
-    delay(3000);
-#endif*/
 }
